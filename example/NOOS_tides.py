@@ -197,25 +197,32 @@ def pred_to_netCDF(STATION, ncfile, x, harm, rr, ph, pred_times, pred_all):
 
     print 'Wrote ncfile='+ncfile
 
-    # Quick control of resulting output:
+    # Quick control of resulting tides prediction:
     """
     STATION=CUXHAVEN
+    
+    elev_file=$filein # Model file of the last year
+    tides_file=$ncfile # Tides prediction
+
+    # Assume an overlap of 31 days at end elev_file and start of tides_file
+    
     start=0
-    end=4464 # 31 days
+    end=4464 # Last 31 days of the tides_file 10-min intervals
     year='2022'
-    start1=52560 # 16 dec of the last model year
+    start1=52560 # Start of the overlapping elev_file data
     end1=$(echo $start1+$end | bc -l)
 
-    tides_file=$ncfile
-    elev_file=$filein # Model file of the last year
-    
     ncks -O -d time,$start1,$end1 $elev_file Elev_${STATION}_ncks_$year.nc
     
     ncks -O -d time,$start,$end $tides_file Tides_${STATION}_ncks_$year.nc
+    
     ncks -A -v elev Elev_${STATION}_ncks_$year.nc Tides_${STATION}_ncks_$year.nc
+    
     # Subtract the tides to yield the surge
     ncap2 -O -s "surge=elev-tides" Tides_${STATION}_ncks_$year.nc Surge_${STATION}_ncks_$year.nc
     ncatted -a long_name,surge,m,c,"surge=elev-tides at ${STATION}" Surge_${STATION}_ncks_$year.nc
+
+    # View the result and compare the elev, tides and surge timeseries graphs
     ncview Surge_${STATION}_ncks_$year.nc
     """
 
@@ -311,7 +318,7 @@ def print_speed_list(x,HARMall,HARMminor=[]):
 
     print '360 deg / 1 month =', 360. / (31.*24.) ,'deg / hour'
 
-# From pwcazenave/tappy readme.md:
+# From Github pwcazenave/tappy readme.md:
 # "Set up the bits needed for TAPPY. This is mostly lifted from
 #  tappy.py in the baker function "analysis" (around line 1721)."
 # cha at FCOO: These are the keywords for analysis, only. They are not relevant
@@ -370,12 +377,12 @@ def package_from_file(datesid,datestamp=None):
     # Read the saved astronomics factors of all the dates
     
     asc.packagefil = ''
+    if datestamp is None: datestamp = datesid
+    package_pkl = astrodir + 'astronomics_' + datestamp +'.pkl'
     try:
         # Re-use earlier data (e.g. from the first STATION)
         assert datesid in asc.package.keys()
     except:
-        if datestamp is None: datestamp = datesid
-        package_pkl = astrodir + 'astronomics_' + datestamp +'.pkl'
         try:
             # assert False
             with open(package_pkl,'r') as packagefile:
@@ -402,7 +409,7 @@ def package_to_file():
   
 def tappy_fill(u, dates, datesid, start=0, end=0, verbose = 1):
 
-    # Fill the tappy instance with the atronomics factors for all dates
+    # Fill the tappy instance with the astronomics factors for all dates
     
     if end == 0: end = len(dates)
     u.dates = dates[start:end]
@@ -653,8 +660,8 @@ DOI:    https://doi.org/10.1175/JTECH-D-16-0142.1
 (Cite: "For some altimeter-constrained tide models, an inferred P1 constituent is found to be more accurate than a directly determined one.")
 
 
-Seasonal variation of the principal tidal constituentsin the Bohai Sea
-Daosheng Wang et al., Ocean Sci., 16, 114, 2020
+Daosheng Wang et al., Seasonal variation of the principal tidal
+constituents in the Bohai Sea. Ocean Sci., 16, 114, 2020
 DOI: https://doi.org/10.5194/os-16-1-2020
 (Available from: https://www.researchgate.net/publication/338404647_Seasonal_variation_of_the_principal_tidal_constituents_in_the_Bohai_Sea [accessed Apr 06 2022])
 (Cite: "A recent work on seasonal variations, based on a method of 'enhanced harmonic analysis' (Jin et al., 2018) that provides temporally varying mean sea level and tidal harmonic parameters during each of a series of (monthly) time segments where a 'segmented harmonic analysis' is performed (as introduced originally by Foreman et al., 1995). '[...] nodal and astronomical argument corrections are embedded into the least square fit, following Foreman et al. (2009); in addition, theharmonic parameters of the minor tidal constituents are assumed to be constant and calculated together with the temporally varying harmonic parameters of the principal tidal constituent'")
@@ -665,10 +672,12 @@ DOI: https://doi.org/10.1016/j.ecss.2020.107126
 
 (Cite: "Long (65 years) timeseries measures are constructed for what they call 'the spatial distribution and temporal variations of tidal range difference (TRD) induced by the baroclinity'. Conclusion: '[...] absolute summer TRD is much bigger than the winter one.'")
 
-Mawdsley RJ and Haigh ID (2016). Spatial and Temporal Variability and Long-Term Trends in Skew Surges Globally. Front. Mar. Sci. 3:29.doi: 10.3389/fmars.2016.00029 
+
+Mawdsley RJ and Haigh ID (2016): Spatial and Temporal Variability and Long-Term Trends in Skew Surges Globally. Front. Mar. Sci. 3:29. doi: 10.3389/fmars.2016.00029 
 Available from: https://www.researchgate.net/publication/299279604_Spatial_and_Temporal_Variability_and_Long-Term_Trends_in_Skew_Surges_Globally [accessed Apr 06 2022]
 
-(Cite: Compare usage of 'non-tidal residual (NTR)' versus 'skew surge' in investigation of 'extreme sea levels (ESL)'. 'A skew surge is the differencebetween the maximum observed sea level and the maximumpredicted tidal level regardless of their timing during the tidal cycle. "The tide-surge interaction is strongest in regions of shallow bathymetry such as the North Sea, north Australia and the Malay Peninsula.")
+(Cite: Compare usage of 'non-tidal residual (NTR)' versus 'skew surge' in investigation of 'extreme sea levels (ESL)'. 'A skew surge is the difference between the maximum observed sea level and the maximum predicted tidal level regardless of their timing during the tidal cycle. "The tide-surge interaction is strongest in regions of shallow bathymetry such as the North Sea, north Australia and the Malay Peninsula.")
+
 
 Adam Devlin et al., 2018: Seasonality of Tides in Southeast Asian Waters. Journal of Physical Oceanography 48(5)
 DOI: 10.1175/JPO-D-17-0119.1
